@@ -1,0 +1,341 @@
+---
+title: "benthic_swaths"
+author: "JT_Miller"
+date: "11/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(psych)
+library(corrplot)
+library(RColorBrewer)
+```
+
+
+
+
+
+
+```{r}
+reef_critters <- read.csv("Annual_Quad_Swath_All_Years_20200108.csv", header=T, sep = ",", na.strings="-99999")
+```
+
+This data comes from SBC LTER: Reef: Kelp Forest Community Dynamics: Invertebrate and algal density
+Metadata abstract: These data describe the density and size of a select group of about 50 species of benthic invertebrates and understory algae in fixed plots (either 1m x 1m or 20m x 1m) along permanent transects. These data are part of SBCLTER’s kelp forest monitoring program to track long-term patterns in species abundance and diversity of reef-associated organisms in the Santa Barbara Channel, California, USA. The sampling locations in this dataset are at nine reef sites along the mainland coast of the Santa Barbara Channel and at two sites on the north side of Santa Cruz Island. These sites reflect several oceanographic regimes in the channel and vary in distance from sources of terrestrial runoff. Sampling began in 2000, and these data are updated annually.
+
+The time period of data collection varied among the 11 kelp forest sites. Sampling at BULL, CARP, and NAPL began in 2000, sampling at the other 6 mainland sites (AHND, AQUE, IVEE, GOLB, ABUR, MOHK) began in 2001 (transects 3, 5, 6, 7, 8 at IVEE were added in 2011). Data collection at the two Santa Cruz Island sites (SCTW and SCDI) began in 2004. See Methods for more information.  
+
+```{r}
+str(reef_critters)
+```
+
+```{r}
+Anthozoa <- subset(reef_critters, TAXON_CLASS == "Anthozoa")
+Anthozoa$SIZE[is.na(Anthozoa$SIZE)] <- 0 #change all of the N/A to 0
+#summarize count by year, site and species (common name)
+Anthozoa_sum <- Anthozoa %>%
+  dplyr:: group_by(YEAR, SITE, COMMON_NAME) %>% 
+  dplyr:: summarise(abundance = sum(COUNT,  na.rm=TRUE)) 
+
+#make new data set that doesn't have 0's so we can take an average size
+Anthozoa_s <- subset(reef_critters, TAXON_CLASS == "Anthozoa")
+Anthozoa_s_clean <- Anthozoa_s %>% drop_na(SIZE)
+
+#summarize average size by year, site and species
+Anthozoa_size <- Anthozoa_s_clean %>%
+  dplyr:: group_by(YEAR, COMMON_NAME) %>% 
+  dplyr:: summarise(mean_size = mean(SIZE,  na.rm=TRUE),
+                     N = length(SIZE),
+                    SE = sd(SIZE, na.rm=TRUE)/sqrt(N),
+                    count = sum(COUNT, na.rm=TRUE))                     
+```
+```{r}
+ggplot(Anthozoa_size, aes(x = YEAR, y = Total_length)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() 
+
+
+```
+```{r}
+Aggregating_A <- subset(reef_critters, SCIENTIFIC_NAME == "Anthopleura spp.")
+Aggregating_A$SIZE[is.na(Aggregating_A$SIZE)] <- 0 #change all of the N/A to 0
+#summarize count by year, site and species (common name)
+Aggregating_A_Sum <- Anthozoa %>%
+  dplyr:: group_by(YEAR, SITE, COMMON_NAME) %>% 
+  dplyr:: summarise(abundance = sum(COUNT,  na.rm=TRUE)) 
+
+#make new data set that doesn't have 0's so we can take an average size
+Aggregating_A_s <- subset(reef_critters, SCIENTIFIC_NAME == "Anthopleura spp.")
+Aggregating_A_s_clean <- Aggregating_A %>% drop_na(SIZE)
+
+#summarize average size by year, site and species
+Aggregating_A_size <- Aggregating_A_s_clean %>%
+  dplyr:: group_by(YEAR, COMMON_NAME) %>% 
+  dplyr:: summarise(mean_size = mean(SIZE,  na.rm=TRUE),
+                     N = length(SIZE),
+                    SE = sd(SIZE, na.rm=TRUE)/sqrt(N),
+                    count = sum(COUNT, na.rm=TRUE))         
+```
+
+```{r}
+ggplot(Aggregating_A_size, aes(x = YEAR, y = count)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() 
+```
+```{r}
+###Orange Cup COral###
+OCC <- subset(reef_critters, SCIENTIFIC_NAME == "Balanophyllia elegans")
+OCC$SIZE[is.na(OCC$SIZE)] <- 0 #change all of the N/A to 0
+#summarize count by year, site and species (common name)
+OCC_sum <- Anthozoa %>%
+  dplyr:: group_by(YEAR, SITE, COMMON_NAME) %>% 
+  dplyr:: summarise(abundance = sum(COUNT,  na.rm=TRUE)) 
+
+#make new data set that doesn't have 0's so we can take an average size
+OCC_s <- subset(reef_critters, SCIENTIFIC_NAME == "Balanophyllia elegans")
+OCC_s_clean <- OCC_s %>% drop_na(SIZE)
+
+#summarize average size by year, site and species
+OCC_size <- OCC_s_clean %>%
+  dplyr:: group_by(YEAR, COMMON_NAME) %>% 
+  dplyr:: summarise(mean_size = mean(SIZE,  na.rm=TRUE),
+                     N = length(SIZE),
+                    SE = sd(SIZE, na.rm=TRUE)/sqrt(N),
+                    count = sum(COUNT, na.rm=TRUE))      
+```
+```{r}
+ggplot(OCC_size, aes(x = YEAR, y = count)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal()
+```
+```{r}
+###Urchins###
+echinoidea <- subset(reef_critters, TAXON_CLASS == "Echinoidea")
+echinoidea$SIZE[is.na(echinoidea$SIZE)] <- 0 #change all of the N/A to 0
+#summarize count by year, site and species (common name)
+echinoidea_sum <- echinoidea %>%
+  dplyr:: group_by(YEAR, SITE, COMMON_NAME) %>% 
+  dplyr:: summarise(abundance = sum(COUNT,  na.rm=TRUE)) 
+
+#make new data set that doesn't have 0's so we can take an average size
+echinoidea_s <- subset(reef_critters, TAXON_CLASS == "Echinoidea")
+echinoidea_s_clean <- echinoidea_s %>% drop_na(SIZE)
+
+#summarize average size by year, site and species
+echinoidea_size <- echinoidea_s_clean %>%
+  dplyr:: group_by(YEAR, COMMON_NAME) %>% 
+  dplyr:: summarise(mean_size = mean(SIZE,  na.rm=TRUE),
+                     N = length(SIZE),
+                    SE = sd(SIZE, na.rm=TRUE)/sqrt(N),
+                    count = sum(COUNT, na.rm=TRUE))    
+```
+```{r}
+ggplot(echinoidea_size, aes(x = YEAR, y = count)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() 
+```
+```{r}
+###Algae###
+algae <- subset(reef_critters, TAXON_PHYLUM == "Ochrophyta")
+algae$SIZE[is.na(algae$SIZE)] <- 0 #change all of the N/A to 0
+#summarize count by year, site and species (common name)
+algae_sum <- algae %>%
+  dplyr:: group_by(YEAR, SITE, COMMON_NAME) %>% 
+  dplyr:: summarise(abundance = sum(COUNT,  na.rm=TRUE)) 
+
+#make new data set that doesn't have 0's so we can take an average size
+algae_s <- subset(reef_critters, TAXON_PHYLUM == "Ochrophyta")
+algae_s_clean <- algae_s %>% drop_na(SIZE)
+
+#summarize average size by year, site and species
+algae_sum <- algae_s_clean %>%
+  dplyr:: group_by(YEAR, COMMON_NAME) %>% 
+  dplyr:: summarise(mean_size = mean(SIZE,  na.rm=TRUE),
+                     N = length(SIZE),
+                    SE = sd(SIZE, na.rm=TRUE)/sqrt(N),
+                    count = sum(COUNT, na.rm=TRUE))    
+```
+```{r}
+ggplot(algae_sum, aes(x = YEAR, y = count)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() 
+```
+
+
+```{r}
+###Molluscs###
+molluscs <- subset(reef_critters, TAXON_PHYLUM == "Mollusca")
+molluscs$SIZE[is.na(molluscs$SIZE)] <- 0 #change all of the N/A to 0
+#summarize count by year, site and species (common name)
+molluscs_sum <- molluscs %>%
+  dplyr:: group_by(YEAR, SITE, COMMON_NAME) %>% 
+  dplyr:: summarise(abundance = sum(COUNT,  na.rm=TRUE)) 
+
+#make new data set that doesn't have 0's so we can take an average size
+molluscs_S <- subset(reef_critters, TAXON_PHYLUM == "Mollusca")
+molluscs_S_clean <- molluscs_S %>% drop_na(SIZE)
+
+#summarize average size by year, site and species
+molluscs_sum <- molluscs_S_clean %>%
+  dplyr:: group_by(YEAR, COMMON_NAME) %>% 
+  dplyr:: summarise(mean_size = mean(SIZE,  na.rm=TRUE),
+                     N = length(SIZE),
+                    SE = sd(SIZE, na.rm=TRUE)/sqrt(N),
+                    count = sum(COUNT, na.rm=TRUE))    
+```
+
+```{r}
+ggplot(molluscs_sum, aes(x = YEAR, y = count)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() 
+```
+```{r}
+###Ida's Mitre###
+IM <- subset(reef_critters, SCIENTIFIC_NAME == "Atrimitra idae")
+IM$SIZE[is.na(IM$SIZE)] <- 0 #change all of the N/A to 0
+#summarize count by year, site and species (common name)
+IM_sum <- IM %>%
+  dplyr:: group_by(YEAR, SITE, COMMON_NAME) %>% 
+  dplyr:: summarise(abundance = sum(COUNT,  na.rm=TRUE)) 
+
+#make new data set that doesn't have 0's so we can take an average size
+IM_s <- subset(reef_critters, SCIENTIFIC_NAME == "Atrimitra idae")
+IM_s_clean <- IM_s %>% drop_na(SIZE)
+
+#summarize average size by year, site and species
+IM_sum <- IM_s_clean %>%
+  dplyr:: group_by(YEAR, COMMON_NAME) %>% 
+  dplyr:: summarise(mean_size = mean(SIZE,  na.rm=TRUE),
+                     N = length(SIZE),
+                    SE = sd(SIZE, na.rm=TRUE)/sqrt(N),
+                    count = sum(COUNT, na.rm=TRUE))    
+```
+
+```{r}
+ggplot(IM_sum, aes(x = YEAR, y = count)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() 
+```
+
+```{r}
+###Scaleside Piddock###
+SP <- subset(reef_critters, SCIENTIFIC_NAME == "Parapholas californica")
+SP$SIZE[is.na(SP$SIZE)] <- 0 #change all of the N/A to 0
+#summarize count by year, site and species (common name)
+SP_sum <- SP %>%
+  dplyr:: group_by(YEAR, SITE, COMMON_NAME) %>% 
+  dplyr:: summarise(abundance = sum(COUNT,  na.rm=TRUE)) 
+
+#make new data set that doesn't have 0's so we can take an average size
+SP_s <- subset(reef_critters, SCIENTIFIC_NAME == "Parapholas californica")
+SP_s_clean <- SP_s %>% drop_na(SIZE)
+
+#summarize average size by year, site and species
+SP_sum <- SP_s_clean %>%
+  dplyr:: group_by(YEAR, COMMON_NAME) %>% 
+  dplyr:: summarise(mean_size = mean(SIZE,  na.rm=TRUE),
+                     N = length(SIZE),
+                    SE = sd(SIZE, na.rm=TRUE)/sqrt(N),
+                    count = sum(COUNT, na.rm=TRUE))    
+```
+```{r}
+ggplot(SP_sum, aes(x = YEAR, y = count)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() 
+
+#Wow thats some explosive growth in recent years, seems like its been a steady increase from the year 2013, which is when sea star wasting disease started taking hold. Possibly correlated?
+```
+
+```{r}
+ggplot(SP_sum, aes(x = YEAR, y = count)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() +
+  facet_wrap(~SITE)
+
+
+```
+### Scaleside Piddock size comparison
+
+```{r}
+ggplot(SP_s_clean, aes(x = YEAR, y = SIZE)) + 
+  geom_boxplot(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() +
+  facet_wrap(~YEAR)
+```
+### Scaleside Piddock with Prey Dynamics via reduction of sea star species?
+```{r}
+SP_and_Seastars <- subset(reef_critters, TAXON_CLASS == "Asteroidea" | SCIENTIFIC_NAME == "Parapholas californica")
+
+SP_and_Seastars$SIZE[is.na(SP_and_Seastars$SIZE)] <- 0 #change all of the N/A to 0
+#summarize count by year, site and species (common name)
+SP_and_Seastars_Sum <- SP_and_Seastars %>%
+  dplyr:: group_by(YEAR, SITE, COMMON_NAME) %>% 
+  dplyr:: summarise(abundance = sum(COUNT,  na.rm=TRUE)) 
+
+#make new data set that doesn't have 0's so we can take an average size
+SP_and_Seastars_s<- subset(reef_critters, TAXON_CLASS == "Asteroidea" | SCIENTIFIC_NAME == "Parapholas californica")
+SP_and_Seastars_s_clean <- SP_and_Seastars_s %>% drop_na(SIZE)
+
+#summarize average size by year, site and species
+SP_and_Seastar_Sum <- SP_and_Seastars_s_clean %>%
+  dplyr:: group_by(YEAR, COMMON_NAME) %>% 
+  dplyr:: summarise(mean_size = mean(SIZE,  na.rm=TRUE),
+                     N = length(SIZE),
+                    SE = sd(SIZE, na.rm=TRUE)/sqrt(N),
+                    count = sum(COUNT, na.rm=TRUE))    
+```
+```{r}
+ggplot(SP_and_Seastar_Sum, aes(x = YEAR, y = count)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() 
+
+```
+### Closer look at just the Bat star and the SP
+```{r}
+SP_and_B_G_stars <- subset(reef_critters, COMMON_NAME == "Bat Star" | COMMON_NAME == "Giant Spined Sea Star"| SCIENTIFIC_NAME == "Parapholas californica" )
+
+SP_and_B_G_stars$SIZE[is.na(SP_and_B_G_stars$SIZE)] <- 0 #change all of the N/A to 0
+#summarize count by year, site and species (common name)
+SP_and_B_G_stars_Sum <- SP_and_B_G_stars %>%
+  dplyr:: group_by(YEAR, SITE, COMMON_NAME) %>% 
+  dplyr:: summarise(abundance = sum(COUNT,  na.rm=TRUE)) 
+
+#make new data set that doesn't have 0's so we can take an average size
+SP_and_B_G_stars_s<- subset(reef_critters, COMMON_NAME == "Bat Star" | COMMON_NAME == "Giant Spined Sea Star"| SCIENTIFIC_NAME == "Parapholas californica")
+SP_and_B_G_stars_s_clean <- SP_and_B_G_stars_s %>% drop_na(SIZE)
+
+#summarize average size by year, site and species
+SP_and_B_G_stars_sum <- SP_and_B_G_stars_s_clean %>%
+  dplyr:: group_by(YEAR, COMMON_NAME) %>% 
+  dplyr:: summarise(mean_size = mean(SIZE,  na.rm=TRUE),
+                     N = length(SIZE),
+                    SE = sd(SIZE, na.rm=TRUE)/sqrt(N),
+                    count = sum(COUNT, na.rm=TRUE))    
+```
+
+```{r}
+ggplot(SP_and_B_G_stars_sum, aes(x = YEAR, y = count)) + 
+  geom_line(aes(color = COMMON_NAME), size = 1) +
+   scale_color_brewer(palette="Paired") +
+  theme_minimal() 
+```
+
