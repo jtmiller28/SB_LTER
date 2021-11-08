@@ -1,0 +1,83 @@
+---
+title: "SBC_LTER_MHW"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# This markdown is to look at using the package heatwaveR on the SBC_LTER to see if I can identify marine heatwaves
+
+#This particular data set is from nearshore locations along the Northern Channel Islands in the Santa Barbara Channel, its been on going since 2000. 
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(heatwaveR)
+library(tidyverse)
+```
+### Bringing in the dataset and getting to know it
+```{r}
+nci_temp <- read.csv("Island_temp_hourly_allsites_allyears_20210218.csv")
+```
+
+```{r}
+head(nci_temp)
+unique(nci_temp$site)
+#So we have 21 sites total. Probably going to want to split up the data into each site. 
+#Notice that the temp is also recorded by the hour for each day, this doesn't work with the heatwavesR package fxn, therefore lets create a new column that takes the average of each day as the total record? 
+```
+```{r}
+#First lets make it where we're looking at one site at the moment. TO DO: make a function that divides out these sites. 
+nci_temp_ANS <- nci_temp %>% 
+  dplyr::filter(site == "ANS")
+```
+Next, it looks like we're going to need to specify a particular depth range: 14m and only keep these recordings. 
+```{r}
+nci_temp_ANS_14 <- nci_temp_ANS %>% 
+  dplyr::filter(depth_m == 14)
+
+
+
+#aggregate(temperature_c ~ datetime_gmt, nci_temp_ANS_14, mean)
+
+
+
+#avg_df <- nci_temp_ANS %>% 
+  #group_by(datetime_gmt) %>% 
+ # summarise(mean(temperature_c))
+
+```
+
+```{r}
+nci_temp_ANS_14$datetime_gmt <- as.Date(nci_temp_ANS_14$all)
+```
+
+
+```{r}
+# Create example dataframe 
+datetime <- c('31.01.2010 00:30', '31.01.2010 00:31', '31.01.2010 10:32', '01.02.2010 10:00', '01.02.2010 11:03', '01.03.2011 08:09', '01.03.2011 21:00', '01.03.2011 22:00')
+value <- c(1.5, 2, 2.5, 7, 3.5, 9, 4.5, 7.5)
+df1 <- data.frame(datetime, value)
+```
+
+
+```{r}
+#Using lubridate to fix some issues with how xts reads the character string 
+library(lubridate)
+time_fix <- nci_temp_ANS_14 %>% 
+  mutate(time = mdy_hms(datetime_gmt))
+#Appears that a method is to use the xts package to calculate the daily mean temperature 
+
+library(xts)
+library(tidyverse)
+nci_temp_ANS <-data.frame(nci_temp_ANS)
+nci_drop <- time_fix %>% drop_na(site, datetime_gmt, depth_m, temperature_c)
+df.xts <- as.xts(nci_drop[,4], order.by=as.Date(nci_temp_ANS[,2], format = '%d.%m.%Y %H:%M'))
+df_xts <- as.xts(nci_drop) 
+
+d.mean <- apply.daily(df.xts, mean)
+```
+
+### Data citation: Washburn, L, L. Kui. 2021. SBC LTER: Ocean: Ocean hourly temperature at nearshore locations along the Northern Channel Islands in the Santa Barbara Channel, ongoing since 2000 ver 1. Environmental Data Initiative. https://doi.org/10.6073/pasta/1dfe35ec63376ba1f02172ab92f8032e. Accessed 2021-11-04.

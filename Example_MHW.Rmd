@@ -1,0 +1,43 @@
+---
+title: "Example Marine Heat Waves"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## This is a markdown created to look at Marine Heat Waves. 
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(heatwaveR)
+```
+
+```{r}
+#Detect the events in a time series
+ts <- ts2clm(sst_WA, climatologyPeriod = c("1982-01-01", "2011-12-31"))
+mhw <- detect_event(ts)
+```
+
+```{r}
+#View the metrics 
+mhw$event %>% 
+  dplyr::ungroup() %>% 
+  dplyr::select(event_no, duration, date_start, date_peak, intensity_max, intensity_cumulative) %>% 
+  dplyr::arrange(-intensity_max) %>% 
+  head(5)
+  
+```
+# Visualizing Marine Heat Waves
+```{r}
+#Default visuals: uses the event_line() and lolli_plot() directly on the output of detect_event() to visualize 
+
+event_line(mhw, spread = 180, metric = "intensity_max", 
+           start_date = "1982-01-01", end_date = "2014-12-31")
+```
+```{r}
+lolli_plot(mhw, metric = "intensity_max")
+```
+
