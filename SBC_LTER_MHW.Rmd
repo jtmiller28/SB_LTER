@@ -75,9 +75,12 @@ nci_temp_14m_avgT_daily <- select(nci_temp_14m_avgT_daily, -c(time, temperature_
 nci_temp_ANS <- nci_temp_14m_avgT_daily %>% 
   dplyr::filter(site == "ANS")
 
+nci_temp_ANS <- nci_temp_ANS %>% 
+  rename(t = date, temp = mean_daily_temp_c) #There seems to be issues with R interpreting the event_line() variable as a fxn? Couldn't find a workaround therefore I just renamed the columns which ended up working.
+
 #Changing the date column to the data type.
 nci_temp_ANS <- nci_temp_ANS %>% 
-  mutate(date = as.Date(date))
+  mutate(t = as.Date(t))
 
 head(nci_temp_ANS)
 ```
@@ -88,9 +91,10 @@ head(nci_temp_ANS)
 
 ```{r}
 #Detect events in a time series
-ANS_ts <- ts2clm(nci_temp_ANS, x = date, y = mean_daily_temp_c, climatologyPeriod = c("2003-04-11", "2020-09-18"))
+ANS_ts <- ts2clm(nci_temp_ANS,  climatologyPeriod = c("2003-04-11", "2020-09-18"))
 
-ANS_mhw <- detect_event(ANS_ts, x = date, y = mean_daily_temp_c)
+ANS_mhw <- detect_event(ANS_ts)
+head(ANS_mhw)
 ```
 
 ```{r}
@@ -105,7 +109,9 @@ ANS_mhw$event %>%
 event_line(ANS_mhw, spread = 180, metric = "intensity_max", 
            start_date = "2003-04-11", end_date = "2020-09-18")
 ```
-
+```{r}
+lolli_plot(ANS_mhw, metric = "intensity_max")
+```
 
 
 ### Data citation: Washburn, L, L. Kui. 2021. SBC LTER: Ocean: Ocean hourly temperature at nearshore locations along the Northern Channel Islands in the Santa Barbara Channel, ongoing since 2000 ver 1. Environmental Data Initiative. https://doi.org/10.6073/pasta/1dfe35ec63376ba1f02172ab92f8032e. Accessed 2021-11-04.
