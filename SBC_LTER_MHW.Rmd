@@ -20,8 +20,6 @@ library(tidyverse)
 ### Bringing in the dataset and getting to know it
 ```{r}
 nci_temp <- read.csv("Island_temp_hourly_allsites_allyears_20210218.csv")
-
-
 ```
 
 ```{r}
@@ -35,33 +33,24 @@ unique(nci_temp$site)
 is.character(nci_temp$datetime_gmt) #Make sure the date is in character string data type 
 
 nci_temp_sep <- nci_temp%>% 
-  separate(datetime_gmt, c("date", "time"), " ") #We need to seperate out the data so that times are seperated from the data
+  separate(datetime_gmt, c("date", "time"), " ") #We need to separate out the data so that times are separated from the data, note that open   " " denotes that the date and time are separated by a space in the column datetime_gmt
 ```
 
  
 ```{r}
-#Next, it looks like we're going to need to specify a particular depth range: 14m and only keep these recordings.
+#Next, it looks like we're going to need to specify a particular depth range: 14m and only keep these recordings. (14m has the long term values according to the metadata)
 nci_temp_14m <- nci_temp_sep %>% 
   dplyr::filter(depth_m == 14)
-
-#avg_df <- nci_temp_ANS %>% 
-  #group_by(datetime_gmt) %>% 
- # summarise(mean(temperature_c))
-
 ```
 
-```{r}
-#First lets make it where we're looking at one site at the moment. TO DO: make a function that divides out these sites. 
-nci_temp_ANS <- nci_temp %>% 
-  dplyr::filter(site == "ANS")
-```
+
 
 
 ```{r}
 #Now lets find the mean temperature for every day and create a new column for it. 
 nci_temp_14m_avgT <- nci_temp_14m %>% 
   group_by(date, site) %>% 
-  mutate(mean_daily_temp = mean(temperature_c))
+  mutate(mean_daily_temp_c = mean(temperature_c))
 
 # Now lets do a sanity check 
 
@@ -74,13 +63,48 @@ nci_temp_14m_avgT_daily <- nci_temp_14m_avgT %>%
 
 #And lets remove the time column since that's not really representative of anything at this point 
 
-nci_temp_14m_avgT_daily <- select(nci_temp_14m_avgT_daily, !time)
+nci_temp_14m_avgT_daily <- select(nci_temp_14m_avgT_daily, -c(time, temperature_c))
+```
+
+```{r}
+
+```
+
+```{r}
+#We can now divide by sites if we would like, lets try looking at the ANS site. 
+nci_temp_ANS <- nci_temp_14m_avgT_daily %>% 
+  dplyr::filter(site == "ANS")
+
+#Changing the date column to the data type.
+nci_temp_ANS <- nci_temp_ANS %>% 
+  mutate(date = as.Date(date))
+
+head(nci_temp_ANS)
 ```
 
 
 
 
 
+```{r}
+#Detect events in a time series
+ANS_ts <- ts2clm(nci_temp_ANS, x = date, y = mean_daily_temp_c, climatologyPeriod = c("2003-04-11", "2020-09-18"))
+
+ANS_mhw <- detect_event(ANS_ts, x = date, y = mean_daily_temp_c)
+```
+
+```{r}
+ANS_mhw$event %>% 
+  dplyr::ungroup() %>% 
+  dplyr::select(event_no, duration, date_start, date_peak, intensity_max, intensity_cumulative) %>% 
+  dplyr::arrange(-intensity_max) %>% 
+  head(5)
+```
+```{r}
+#Visualizing
+event_line(ANS_mhw, spread = 180, metric = "intensity_max", 
+           start_date = "2003-04-11", end_date = "2020-09-18")
+```
 
 
 
