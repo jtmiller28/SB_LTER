@@ -112,6 +112,106 @@ event_line(ANS_mhw, spread = 180, metric = "intensity_max",
 ```{r}
 lolli_plot(ANS_mhw, metric = "intensity_max")
 ```
+### This is alot of steps to filter and whatnot, maybe I could create a fxn to do these steps so I dont have to copy paste all of this work. 
+```{r}
+SBC_siter <- function(dat, site=NULL, temp=NULL, date=NULL, date_adjust=NULL) {
+  if(!is.null(site)) {
+    dat <- dat[dat$site %in% site, ]
+  }
+  if(is.null(temp)) {
+    dat <- dat %>% rename(temp = mean_daily_temp_c)
+  }
+  if(is.null(date)) {
+    dat <- dat %>% rename(t = date)
+  }
+  if(is.null(date_adjust)){
+    dat <- dat %>% mutate(t = as.Date(t))
+  }
 
+  
+}
+
+test <- SBC_siter(nci_temp_14m_avgT_daily, site="ANS") #Works!
+```
+
+### Using the new function we made to look at each site
+```{r}
+ans <- SBC_siter(nci_temp_14m_avgT_daily, site = "ANS")
+bay <- SBC_siter(nci_temp_14m_avgT_daily, site = "BAY") #cant be used too little years of record. 
+bea <- SBC_siter(nci_temp_14m_avgT_daily, site = "BEA") #Cant be used 
+ctn <- SBC_siter(nci_temp_14m_avgT_daily, site = "CTN")
+cuy <- SBC_siter(nci_temp_14m_avgT_daily, site = "CUY")
+gul <- SBC_siter(nci_temp_14m_avgT_daily, site = "GUL")
+haz <- SBC_siter(nci_temp_14m_avgT_daily, site = "HAZ")
+mor <- SBC_siter(nci_temp_14m_avgT_daily, site = "MOR")
+pel <- SBC_siter(nci_temp_14m_avgT_daily, site = "PEL")
+pro <- SBC_siter(nci_temp_14m_avgT_daily, site = "PRO")
+scp <- SBC_siter(nci_temp_14m_avgT_daily, site = "SCP")
+smg <- SBC_siter(nci_temp_14m_avgT_daily, site = "SMG")
+smn <- SBC_siter(nci_temp_14m_avgT_daily, site = "smn")
+sms <- SBC_siter(nci_temp_14m_avgT_daily, site = "SMS")
+srn <- SBC_siter(nci_temp_14m_avgT_daily, site = "SRN")
+srs <- SBC_siter(nci_temp_14m_avgT_daily, site = "SRS")
+trl <- SBC_siter(nci_temp_14m_avgT_daily, site = "TRL")
+val <- SBC_siter(nci_temp_14m_avgT_daily, site = "VAL")
+wil <- SBC_siter(nci_temp_14m_avgT_daily, site = "WIL")
+win <- SBC_siter(nci_temp_14m_avgT_daily, site = "WIN")
+```
+
+```{r}
+#Maybe a detector fxn is now in order...
+mhwer <- function(dat, site=NULL, event=NULL, graph=NULL, lolliplot=NULL ) {
+  if(is.null(site)){
+    dat <- ts2clm(dat, climatologyPeriod = c(min(dat$t), max(dat$t)))
+  }
+  if(is.null(event)){
+    to_graph <- detect_event(dat)
+  }
+  if(is.null(graph)){
+     mhw_plot <- event_line(to_graph, spread = 180, metric = "intensity_max", start_date = min(dat$t), end_date = max(dat$t))
+  }
+  if(is.null(lolliplot)){
+    lol_plot <- lolli_plot(to_graph, metric = "intensity_max")
+  }
+  list(mhw_plot, lol_plot)
+
+}
+mhwer(ans)
+
+
+```
+
+
+
+
+### Lets get to plotting!
+```{r}
+#Detect events in a time series
+ctn_ts <- ts2clm(ctn,  climatologyPeriod = c("2009-01-15", "2020-09-20")) #Note: the dates are found by using min and max for ctn$t in the console. 
+
+
+ctn_mhw <- detect_event(ctn_ts)
+
+#Visualizing
+event_line(ctn_mhw, spread = 180, metric = "intensity_max", 
+           start_date = "2009-01-15", end_date = "2020-09-20")
+
+lolli_plot(ctn_mhw, metric = "intensity_max")
+
+```
+```{r}
+#Detect events in a time series
+cuy_ts <- ts2clm(cuy,  climatologyPeriod = c("2009-01-15", "2020-09-20")) #Note: the dates are found by using min and max for ctn$t in the console. 
+
+
+ctn_mhw <- detect_event(ctn_ts)
+
+#Visualizing
+event_line(ctn_mhw, spread = 180, metric = "intensity_max", 
+           start_date = "2009-01-15", end_date = "2020-09-20")
+
+lolli_plot(ctn_mhw, metric = "intensity_max")
+
+```
 
 ### Data citation: Washburn, L, L. Kui. 2021. SBC LTER: Ocean: Ocean hourly temperature at nearshore locations along the Northern Channel Islands in the Santa Barbara Channel, ongoing since 2000 ver 1. Environmental Data Initiative. https://doi.org/10.6073/pasta/1dfe35ec63376ba1f02172ab92f8032e. Accessed 2021-11-04.
