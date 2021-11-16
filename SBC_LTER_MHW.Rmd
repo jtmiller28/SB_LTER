@@ -136,12 +136,13 @@ test <- SBC_siter(nci_temp_14m_avgT_daily, site="ANS") #Works!
 
 ### Using the new function we made to look at each site
 ```{r}
+#Anything noted 'cant be used' is because there isn't 3 or more years of associated data with that site. 
 ans <- SBC_siter(nci_temp_14m_avgT_daily, site = "ANS")
-bay <- SBC_siter(nci_temp_14m_avgT_daily, site = "BAY") #cant be used too little years of record. 
+bay <- SBC_siter(nci_temp_14m_avgT_daily, site = "BAY") #cant be used  
 bea <- SBC_siter(nci_temp_14m_avgT_daily, site = "BEA") #Cant be used 
 ctn <- SBC_siter(nci_temp_14m_avgT_daily, site = "CTN")
 cuy <- SBC_siter(nci_temp_14m_avgT_daily, site = "CUY")
-gul <- SBC_siter(nci_temp_14m_avgT_daily, site = "GUL")
+gul <- SBC_siter(nci_temp_14m_avgT_daily, site = "GUL") #Cant be used
 haz <- SBC_siter(nci_temp_14m_avgT_daily, site = "HAZ")
 mor <- SBC_siter(nci_temp_14m_avgT_daily, site = "MOR")
 pel <- SBC_siter(nci_temp_14m_avgT_daily, site = "PEL")
@@ -158,6 +159,7 @@ wil <- SBC_siter(nci_temp_14m_avgT_daily, site = "WIL")
 win <- SBC_siter(nci_temp_14m_avgT_daily, site = "WIN")
 ```
 
+### More function making
 ```{r}
 #Maybe a detector fxn is now in order...
 mhwer <- function(dat, site=NULL, event=NULL, graph=NULL, lolliplot=NULL ) {
@@ -181,10 +183,43 @@ mhwer(ans)
 
 ```
 
+#Lets see if we can combine the functions to make this process a bit more streamlined
+```{r}
+SBC_mhwer <- function(dat, site=NULL, temp=NULL, date=NULL, date_adjust=NULL, ts=NULL, event=NULL, graph=NULL, lolliplot=NULL) {
+  if(!is.null(site)) {
+    dat <- dat[dat$site %in% site, ]
+  }
+  if(is.null(temp)) {
+    dat <- dat %>% rename(temp = mean_daily_temp_c)
+  }
+  if(is.null(date)) {
+    dat <- dat %>% rename(t = date)
+  }
+  if(is.null(date_adjust)){
+    dat <- dat %>% mutate(t = as.Date(t))
+  }
+  if(is.null(ts)){
+    dat <- ts2clm(dat, climatologyPeriod = c(min(dat$t), max(dat$t)))
+  }
+  if(is.null(event)){
+    to_graph <- detect_event(dat)
+  }
+  if(is.null(graph)){
+     mhw_plot <- event_line(to_graph, spread = 180, metric = "intensity_max", start_date = min(dat$t), end_date = max(dat$t))
+  }
+  if(is.null(lolliplot)){
+    lol_plot <- lolli_plot(to_graph, metric = "intensity_max")
+  }
+  list(mhw_plot, lol_plot)
+}
+
+SBC_mhwer(nci_temp_14m_avgT_daily, site="ANS") #Nice, this function does everything we need. 
+
+```
 
 
 
-### Lets get to plotting!
+### Just check functionality one more time. 
 ```{r}
 #Detect events in a time series
 ctn_ts <- ts2clm(ctn,  climatologyPeriod = c("2009-01-15", "2020-09-20")) #Note: the dates are found by using min and max for ctn$t in the console. 
@@ -198,20 +233,42 @@ event_line(ctn_mhw, spread = 180, metric = "intensity_max",
 
 lolli_plot(ctn_mhw, metric = "intensity_max")
 
+
+#As compared to our newly made fxn
+SBC_mhwer(nci_temp_14m_avgT_daily, site="CTN") #Success!
+
 ```
+#Lets get to plotting
 ```{r}
-#Detect events in a time series
-cuy_ts <- ts2clm(cuy,  climatologyPeriod = c("2009-01-15", "2020-09-20")) #Note: the dates are found by using min and max for ctn$t in the console. 
+SBC_mhwer(nci_temp_14m_avgT_daily, site="CUY") #This was gives us very little
 
+SBC_mhwer(nci_temp_14m_avgT_daily, site="HAZ") #Has an interesting peak
 
-ctn_mhw <- detect_event(ctn_ts)
+SBC_mhwer(nci_temp_14m_avgT_daily, site="MOR") #Has multiple peaks
 
-#Visualizing
-event_line(ctn_mhw, spread = 180, metric = "intensity_max", 
-           start_date = "2009-01-15", end_date = "2020-09-20")
+SBC_mhwer(nci_temp_14m_avgT_daily, site="PEL") #Has a very large peak
 
-lolli_plot(ctn_mhw, metric = "intensity_max")
+SBC_mhwer(nci_temp_14m_avgT_daily, site="PRO") #Has a very large peak
 
+SBC_mhwer(nci_temp_14m_avgT_daily, site="SCP") #Has a very large peak
+
+SBC_mhwer(nci_temp_14m_avgT_daily, site="SMG") #Has a very large peak
+
+SBC_mhwer(nci_temp_14m_avgT_daily, site="SMN") #Has multiple small peaks
+
+SBC_mhwer(nci_temp_14m_avgT_daily, site="SMS") #Heat wave is incomplete
+
+SBC_mhwer(nci_temp_14m_avgT_daily, site="SRN") #Has one abrupt peak
+
+SBC_mhwer(nci_temp_14m_avgT_daily, site="SRS") #Has an extreme amount of heat waves
+
+SBC_mhwer(nci_temp_14m_avgT_daily, site="TRL") #Heat wave is abruptly cut off
+
+SBC_mhwer(nci_temp_14m_avgT_daily, site="VAL") #noticable peak
+
+SBC_mhwer(nci_temp_14m_avgT_daily, site="WIL") #One peak, small and in the early 2000s
+
+SBC_mhwer(nci_temp_14m_avgT_daily, site="WIN") #Big peak, but lots of missing data
 ```
 
 ### Data citation: Washburn, L, L. Kui. 2021. SBC LTER: Ocean: Ocean hourly temperature at nearshore locations along the Northern Channel Islands in the Santa Barbara Channel, ongoing since 2000 ver 1. Environmental Data Initiative. https://doi.org/10.6073/pasta/1dfe35ec63376ba1f02172ab92f8032e. Accessed 2021-11-04.
