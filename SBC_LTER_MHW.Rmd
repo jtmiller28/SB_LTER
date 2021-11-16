@@ -184,8 +184,9 @@ mhwer(ans)
 ```
 
 #Lets see if we can combine the functions to make this process a bit more streamlined
+
 ```{r}
-SBC_mhwer <- function(dat, site=NULL, temp=NULL, date=NULL, date_adjust=NULL, ts=NULL, event=NULL, graph=NULL, lolliplot=NULL) {
+SBC_mhwer <- function(dat, site=NULL, temp=NULL, date=NULL, date_adjust=NULL, ts=NULL, event=NULL, event_metrics=NULL, graph=NULL, lolliplot=NULL) {
   if(!is.null(site)) {
     dat <- dat[dat$site %in% site, ]
   }
@@ -204,18 +205,25 @@ SBC_mhwer <- function(dat, site=NULL, temp=NULL, date=NULL, date_adjust=NULL, ts
   if(is.null(event)){
     to_graph <- detect_event(dat)
   }
+  if(!is.null(event_metrics)){
+    event_metrics <- to_graph$event %>% 
+  dplyr::ungroup() %>%
+  dplyr::select(event_no, duration, date_start, date_peak, intensity_max, intensity_cumulative) %>% 
+  dplyr::arrange(-intensity_max) %>% 
+  head(5)
+  }
   if(is.null(graph)){
      mhw_plot <- event_line(to_graph, spread = 180, metric = "intensity_max", start_date = min(dat$t), end_date = max(dat$t))
   }
   if(is.null(lolliplot)){
     lol_plot <- lolli_plot(to_graph, metric = "intensity_max")
   }
-  list(mhw_plot, lol_plot)
+  list(mhw_plot, lol_plot, event_metrics)
 }
-
-SBC_mhwer(nci_temp_14m_avgT_daily, site="ANS") #Nice, this function does everything we need. 
-
+SBC_mhwer(nci_temp_14m_avgT_daily, site="ANS", event_metrics = TRUE) #Nice, this function does everything we need. 
 ```
+
+
 
 
 
