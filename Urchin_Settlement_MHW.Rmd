@@ -1,0 +1,87 @@
+---
+title: "Urchins_MHW"
+author: "JT Miller"
+date: "11/19/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# This script is an analysis on combining data from the bottom of the SBH water column with Urchin settlement to understand whether the marine heat wave had any effect on urchin recruitment. 
+
+# Loading in packages
+```{r}
+library(tidyverse)
+library(heatwaveR)
+```
+
+
+# reading in the data 
+```{r}
+urchins <- read.csv("Invertebrate_Settlement_All_Years_20211004.csv")
+
+physical_ocean <- read.csv("sternswharf_mooring_sbh_20210303.csv")
+
+physical_ocean2 <- read.csv("sternswharf_mooring_sbh_20210303.csv", header=T, sep = ",", na.strings="9999")
+
+```
+
+#Initial filtering/cleaning
+```{r}
+physical_ocean_sub <- physical_ocean2 %>%
+  dplyr::select(month, year, day, decimal_time, Temperature)
+
+physical_ocean_clean <- physical_ocean_sub %>% 
+  drop_na()
+
+physical_ocean_clean2 <- physical_ocean_clean %>% 
+  group_by(month, year, day) %>% 
+  mutate(mean_daily_temp_c = mean(Temperature))
+
+###Concatinating the columns into a combo of year - month - day
+
+physical_ocean_time <- physical_ocean_clean2 %>% 
+  unite(year_month_day, year, month, day, sep = "-")
+
+physical_ocean_time <- physical_ocean_time %>% 
+  distinct(year_month_day, .keep_all = TRUE)
+```
+
+
+```{r}
+urchin_mhwer <- function(dat, temp=NULL, date=NULL, date_adjust=NULL, ts=NULL, event=NULL, event_metrics=NULL, graph=NULL, lolliplot=NULL) {
+  if(is.null(temp)) {
+    dat <- dat %>% rename(temp = mean_daily_temp_c)
+  }
+  if(is.null(date)) {
+    dat <- dat %>% rename(t = year_month_day)
+  }
+  if(is.null(date_adjust)){
+    dat <- dat %>% mutate(t = as.Date(t))
+  }
+  if(is.null(ts)){
+    dat <- ts2clm(dat, climatologyPeriod = c(min(dat$t), max(dat$t)))
+  }
+  if(is.null(event)){
+    to_graph <- detect_event(dat)
+  }
+  if(!is.null(event_metrics)){
+    event_metrics <- to_graph$event %>% 
+  dplyr::ungroup() %>%
+  dplyr::select(event_no, duration, date_start, date_peak, intensity_max, intensity_cumulative) %>% 
+  dplyr::arrange(-intensity_max) %>% 
+  head(5)
+  }
+  if(is.null(graph)){
+     mhw_plot <- event_line(to_graph, spread = 180, metric = "intensity_max", start_date = min(dat$t), end_date = max(dat$t))
+  }
+  if(is.null(lolliplot)){
+    lol_plot <- lolli_plot(to_graph, metric = "intensity_max")
+  }
+  list(mhw_plot, lol_plot, event_metrics)
+}
+urchin_mhwer(physical_ocean_time, event_metrics = TRUE) #Nice, this function does everything we need. 
+```
+
