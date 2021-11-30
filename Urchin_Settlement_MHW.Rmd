@@ -15,12 +15,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(heatwaveR)
+library(ggplot2)
 ```
 
 
 # reading in the data 
 ```{r}
-urchins <- read.csv("Invertebrate_Settlement_All_Years_20211004.csv")
+urchins <- read.csv("Invertebrate_Settlement_All_Years_20211004.csv", header=T, sep = ",", na.strings="-99999")
 
 physical_ocean <- read.csv("sternswharf_mooring_sbh_20210303.csv")
 
@@ -82,6 +83,94 @@ urchin_mhwer <- function(dat, temp=NULL, date=NULL, date_adjust=NULL, ts=NULL, e
   }
   list(mhw_plot, lol_plot, event_metrics)
 }
+
 urchin_mhwer(physical_ocean_time, event_metrics = TRUE) #Nice, this function does everything we need. 
 ```
+### Lets look at the urchin data for Stearns Wharf, Santa Barbara CA
+```{r}
+urchins_st <- urchins %>% 
+  filter(SITE == "SBSTWRF")
 
+```
+
+### So the duration of how long each urchin plot is out is very different per group...divide out each settlement by the number of days? Total_Urchins/Duration = Total Urchins per day? 
+```{r}
+urchins_p_day <- urchins_st %>% 
+  mutate(urchins_per_day = (TOTAL_URCHINS/DURATION))
+```
+
+### Now lets avg them by which group they were (so just date retrieved). Seperate top and bottom just in case that becomes important later down the line. Also get rid of redundancies via distinct()
+```{r}
+urchins_avg_day <- urchins_p_day %>% 
+  group_by(DATE_RETRIEVED) %>%
+  mutate(avg_settlement_per_day = mean(urchins_per_day))
+
+urchins_avg_day_dis <- urchins_avg_day %>% 
+  distinct(DATE_RETRIEVED, .keep_all = TRUE)
+
+# And since the ggplot will be a mess like this, lets collapse these into months to get some better visualizations
+
+#This line of code changes the character string of date retrieved to a Date type. 
+urchins_avg_day_dis$DATE_RETRIEVED_NEW <- strptime(as.character(urchins_avg_day_dis$DATE_RETRIEVED), "%m/%d/%Y")
+
+# This line of code allows us to specify a new column with the date formating
+format(urchins_avg_day_dis$DATE_RETRIEVED_NEW, "%m-%d-%Y")
+
+# Lets graph this to see what we have
+ggplot(urchins_avg_day_dis, aes(x = avg_settlement_per_day)) +
+  geom_histogram()
+
+#Very left skewed. Maybe a log transformation will help?
+
+ggplot(urchins_avg_day_dis, aes(x = log(avg_settlement_per_day))) +
+  geom_histogram()
+
+#A bit better, might as well keep it though Im not going to be using stats here since it has pseudoreplication. 
+
+ggplot(urchins_avg_day_dis, aes(x = DATE_RETRIEVED, y = log(avg_settlement_per_day))) +
+         geom_line()
+
+
+
+
+
+# This line allows us to break up our DATE_RETRIEVED column into seperate columns including the month and the year.
+new_urchin_df <- urchins_avg_day_dis %>% 
+  mutate(month = format(DATE_RETRIEVED_NEW, "%m"), year = format(DATE_RETRIEVED_NEW, "%Y"), month_Year = format(DATE_RETRIEVED_NEW, "%Y-%m")) 
+
+#Now create a new variable that includes the avg monthly settlement of urchins by month within each year.
+urchins_avg_month <- new_urchin_df %>% 
+  group_by(month, year) %>% 
+  mutate(mean_monthly_settlement = mean(avg_settlement_per_day))
+
+urchins_distinct <- urchins_avg_month %>% 
+  distinct(month_Year, .keep_all = TRUE)
+```
+
+```{r}
+ggplot(data = urchins_distinct, aes(x = month_Year, y = mean_monthly_settlement, group = 1)) +
+          geom_line()
+
+urchins_avg_month_narrow <- urchins_distinct %>% 
+  filter(year %in% 2012:2016)
+
+ggplot(data = urchins_avg_month_narrow, aes(x = month_Year, y = mean_monthly_settlement, group = 1)) +
+          geom_line() +
+  ggtitle("Average Number of Urchin Settlements per Month") +
+  theme(axis.text.x = element_text(size = 6, angle = 90, vjust = 0.5, )) 
+  
+```
+### Okay now that we've got a general idea of the trend in urchin settlements, lets try using the dates of the marine heat waves given by heatwaveR to see if theres any obvious changes.
+```{r}
+urchins_means_mwh <- urchins_avg_month_narrow %>% 
+  filter(year %in% 2010:2016)
+
+ggplot(data = urchins_means_mwh, aes(x = month_Year, y = mean_monthly_settlement, group = 1)) +
+          geom_line() +
+  ggtitle("Urchin Settlement Trends from 2015-2020") +
+  theme(axis.text.x = element_text(size = 6, angle = 90, vjust = 0.5, )) 
+
+```
+
+
+ 
