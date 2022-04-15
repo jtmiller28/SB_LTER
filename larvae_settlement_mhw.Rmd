@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(heatwaveR)
-library(ggplot2) # Message
+library(ggplot2) 
 ```
 
 ```{r}
@@ -70,6 +70,78 @@ format(larvae_distinct$DATE_RETRIEVED_NEW, "%m-%d-%Y")
 larvae_distinct_df <- larvae_distinct %>% 
   mutate(month = format(DATE_RETRIEVED_NEW, "%m"), year = format(DATE_RETRIEVED_NEW, "%Y"), month_Year = format(DATE_RETRIEVED_NEW, "%Y-%m")) 
 
+<<<<<<< HEAD
 
 ```
 
+=======
+larvae_distinct_month <- larvae_distinct_df %>% 
+  group_by(month, year) %>% 
+  mutate(avg_arthropods_p_month = sum(avg_arthropods)) %>% 
+  mutate(avg_bivalves_p_month = sum(avg_bivalves)) %>% 
+  mutate(avg_gastropods_p_month = sum(avg_gastropods)) %>% 
+  mutate(avg_stars_p_month = sum(avg_stars)) %>% 
+  mutate(avg_purps_p_month = sum(avg_purps)) %>% 
+  mutate(avg_mussels_p_month = sum(avg_mussels)) %>% 
+  mutate(avg_urchins_p_month = sum(avg_urchins))
+
+larvae_simplified <- larvae_distinct_month %>% 
+  distinct(month_Year, .keep_all = TRUE)
+```
+
+### It seems that all of the data is going to have a heavy left skew due to the nature of high low quantity counts, therefore lets do a log transformation to normalize the data. 
+```{r}
+larvae_simplified2 <- larvae_simplified %>% 
+  mutate(log_avg_arthropods_p_month = log10(avg_arthropods_p_month)) %>% 
+  mutate(log_avg_bivalves_p_month = log10(avg_bivalves_p_month)) %>% 
+  mutate(log_avg_gastropods_p_month = log10(avg_gastropods_p_month)) %>% 
+  mutate(log_avg_stars_p_month = log10(avg_stars_p_month)) %>% 
+  mutate(log_avg_purps_p_month = log10(avg_purps_p_month)) %>% 
+  mutate(log_avg_mussels_p_month = log10(avg_mussels_p_month)) %>% 
+  mutate(log_avg_urchins_p_month = log10(avg_urchins_p_month))
+
+```
+
+
+```{r}
+ggplot(data = larvae_simplified, aes(x = month_Year, y = avg_arthropods_p_month, group = 1)) +
+  geom_line()
+
+#Weird how theres spikes in the data and all of a sudden just nothing...
+
+ggplot(larvae_simplified, aes(x = avg_arthropods_p_month)) +
+  geom_histogram()
+
+ggplot(data=larvae_simplified2, aes(x = log_avg_arthropods_p_month)) +
+  geom_histogram()
+
+
+
+#A log transformation makes the data more normal
+```
+```{r}
+#lets try honing in on that huge spike and see whats going on in that region. 
+larvae_simplified_spike <- larvae_simplified %>% 
+  filter(year %in% 1998:2000)
+
+ggplot(larvae_simplified_spike, aes(x = month_Year, y = avg_arthropods_p_month, group = 1)) +
+  geom_line() + 
+  theme(axis.text.x = element_text(size = 6, angle = 90, vjust = 0.5,))
+```
+
+```{r}
+ggplot(data = larvae_simplified, aes(x = month_Year, y = avg_urchins_p_month, group = 1)) +
+  geom_line()
+#Interesting oscillatory pattern
+```
+```{r}
+larvae_simplified_urchin_spikes <- larvae_simplified %>% 
+  filter(year %in% 1998:2000)
+
+ggplot(larvae_simplified_spike, aes(x = month_Year, y = avg_arthropods_p_month, group = 1)) +
+  geom_line() + 
+  theme(axis.text.x = element_text(size = 6, angle = 90, vjust = 0.5,))
+```
+
+
+>>>>>>> 3c5ad0b373cb54b4efb803c34eea5f679a12bb03
