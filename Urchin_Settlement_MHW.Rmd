@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Loading in packages
 ```{r}
-library(tidyverse)
+library(tidyverse) # Test
 library(heatwaveR)
 library(ggplot2)
 ```
@@ -26,13 +26,14 @@ urchins <- read.csv("Invertebrate_Settlement_All_Years_20211004.csv", header=T, 
 physical_ocean <- read.csv("sternswharf_mooring_sbh_20210303.csv")
 
 physical_ocean2 <- read.csv("sternswharf_mooring_sbh_20210303.csv", header=T, sep = ",", na.strings="9999")
+#Washburn, L, C. Gotschalk, D. Salazar. 2021. SBC LTER: Ocean: Currents and Biogeochemistry: Moored CTD and ADCP data from Santa Barbara Harbor Mooring (SBH), ongoing since 1999 ver 4. Environmental Data Initiative. https://doi.org/10.6073/pasta/0faed93009eff16a61d90467170eab7d. Accessed 2021-11-30.
 
 ```
 
 #Initial filtering/cleaning
 ```{r}
 physical_ocean_sub <- physical_ocean2 %>%
-  dplyr::select(month, year, day, decimal_time, Temperature)
+  dplyr::select(month, year, day, decimal_time, Temperature) #Temperature comes from the CTD instrument
 
 physical_ocean_clean <- physical_ocean_sub %>% 
   drop_na()
@@ -52,7 +53,7 @@ physical_ocean_time <- physical_ocean_time %>%
 
 
 ```{r}
-urchin_mhwer <- function(dat, temp=NULL, date=NULL, date_adjust=NULL, ts=NULL, event=NULL, event_metrics=NULL, graph=NULL, lolliplot=NULL) {
+urchin_mhwer <- function(dat, temp=NULL, date=NULL, date_adjust=NULL, ts=NULL, event=NULL, event_metrics=NULL, graph=NULL, lolliplot=NULL, mhw_category=NULL) {
   if(is.null(temp)) {
     dat <- dat %>% rename(temp = mean_daily_temp_c)
   }
@@ -68,6 +69,9 @@ urchin_mhwer <- function(dat, temp=NULL, date=NULL, date_adjust=NULL, ts=NULL, e
   if(is.null(event)){
     to_graph <- detect_event(dat)
   }
+  if(!is.null(mhw_category)){
+    mhw_cat <- category(to_graph, S = TRUE)
+  }
   if(!is.null(event_metrics)){
     event_metrics <- to_graph$event %>% 
   dplyr::ungroup() %>%
@@ -76,15 +80,15 @@ urchin_mhwer <- function(dat, temp=NULL, date=NULL, date_adjust=NULL, ts=NULL, e
   head(5)
   }
   if(is.null(graph)){
-     mhw_plot <- event_line(to_graph, spread = 180, metric = "intensity_max", start_date = min(dat$t), end_date = max(dat$t))
+     mhw_plot <- event_line(to_graph, spread = 180, metric = "intensity_max", start_date = min(dat$t), end_date = max(dat$t), category = TRUE)
   }
   if(is.null(lolliplot)){
     lol_plot <- lolli_plot(to_graph, metric = "intensity_max")
   }
-  list(mhw_plot, lol_plot, event_metrics)
+  list(mhw_plot, lol_plot, event_metrics, mhw_cat)
 }
 
-urchin_mhwer(physical_ocean_time, event_metrics = TRUE) #Nice, this function does everything we need. 
+urchin_mhwer(physical_ocean_time, event_metrics = TRUE, mhw_cat = TRUE) #Nice, this function does everything we need. 
 ```
 ### Lets look at the urchin data for Stearns Wharf, Santa Barbara CA
 ```{r}
@@ -169,6 +173,73 @@ ggplot(data = urchins_means_mwh, aes(x = month_Year, y = mean_monthly_settlement
           geom_line() +
   ggtitle("Urchin Settlement Trends from 2015-2020") +
   theme(axis.text.x = element_text(size = 6, angle = 90, vjust = 0.5, )) 
+
+```
+### Looking at some other data I found on SBH
+Hofmann, G, L. Washburn. 2020. SBC LTER: Ocean: Time-series: Mid-water SeaFET pH and CO2 system chemistry with surface and bottom Dissolved Oxygen at Santa Barbara Harbor/Stearns Wharf(SBH), 2012-2017 ver 4. Environmental Data Initiative. https://doi.org/10.6073/pasta/6322ad40dfbc0bbc037994490218e28e. Accessed 2021-11-30.
+```{r}
+moored_pH <- read.csv("santabarbaraharbor_moored_pH_sbh_20171219.csv", header=T, sep = ",", na.strings="-9999")
+#Unfortunately this data does not have anything as far as bottom temp is concerned as well. It does have an In situ temp we could possibly use?   
+```
+
+### Splitting up the data column is necessary
+```{r}
+moored_temp <- moored_pH %>% 
+  select(Time_stamp_UTC, Temperature_C_insitu) #Take only the columns we want
+
+moored_temp$Date <- as.Date(moored_temp$Time_stamp_UTC)
+
+moored_temp_d_avgs <- moored_temp %>% 
+  group_by(Date) %>% 
+  mutate(daily_temp_avg = mean(Temperature_C_insitu))
+
+moored_temp_d_avgs_distinct <- moored_temp_d_avgs %>% 
+  distinct(Date, .keep_all = TRUE)
+
+```
+```{r}
+#Slight modification to the function is needed to deal with this data
+
+urchin_mhwer2 <- function(dat, temp=NULL, date=NULL, date_adjust=NULL, ts=NULL, event=NULL, event_metrics=NULL, graph=NULL, lolliplot=NULL, mhw_category=NULL) {
+  if(is.null(temp)) {
+    dat <- dat %>% rename(temp = daily_temp_avg)
+  }
+  if(is.null(date)) {
+    dat <- dat %>% rename(t = Date)
+  }
+  if(is.null(date_adjust)){
+    dat <- dat %>% mutate(t = as.Date(t))
+  }
+  if(is.null(ts)){
+    dat <- ts2clm(dat, climatologyPeriod = c(min(dat$t), max(dat$t)))
+  }
+  if(is.null(event)){
+    to_graph <- detect_event(dat)
+  }
+  if(!is.null(mhw_category)){
+    mhw_cat <- category(to_graph, S = TRUE)
+  }
+  if(!is.null(event_metrics)){
+    event_metrics <- to_graph$event %>% 
+  dplyr::ungroup() %>%
+  dplyr::select(event_no, duration, date_start, date_peak, intensity_max, intensity_cumulative) %>% 
+  dplyr::arrange(-intensity_max) %>% 
+  head(5)
+  }
+  if(is.null(graph)){
+     mhw_plot <- event_line(to_graph, spread = 180, metric = "intensity_max", start_date = min(dat$t), end_date = max(dat$t), category = TRUE)
+  }
+  if(is.null(lolliplot)){
+    lol_plot <- lolli_plot(to_graph, metric = "intensity_max")
+  }
+  list(mhw_plot, lol_plot, event_metrics, mhw_cat)
+}
+
+```
+
+```{r}
+urchin_mhwer2(moored_temp_d_avgs_distinct, event_metrics = TRUE, mhw_category = TRUE)
+
 
 ```
 
